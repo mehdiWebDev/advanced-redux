@@ -2,18 +2,25 @@ import { configureStore, createSlice } from "@reduxjs/toolkit";
 
 const initialItemState = {
   items: [],
-  totalAmount: 14,
+  totalAmount: 0,
+  changed: false,
 };
 
 const itemSlice = createSlice({
   name: "item",
   initialState: initialItemState,
   reducers: {
+    replaceCart(state, action) {
+      state.items = action.payload;
+      state.totalAmount = action.payload.totalAmount;
+    },
+
     addItem(state, action) {
       const existingItem = state.items.find(
         (item) => item.id === action.payload.id
       );
 
+      state.changed = true;
       if (!existingItem) {
         state.items.push({
           id: action.payload.id,
@@ -31,10 +38,10 @@ const itemSlice = createSlice({
       const newTotal = state.items.reduce((acc, curVal) => {
         return acc + curVal.price * curVal.amount;
       }, 0);
-      console.log(newTotal);
       state.totalAmount = newTotal;
     },
     removeItem(state, action) {
+      state.changed = true;
       state.totalAmount = state.items.reduce((acc, curVal) => {
         return acc + curVal.price * curVal.amount;
       }, 0);
@@ -51,7 +58,6 @@ const itemSlice = createSlice({
       const newTotal = state.items.reduce((acc, curVal) => {
         return acc + curVal.price * curVal.amount;
       }, 0);
-      console.log(newTotal);
       state.totalAmount = newTotal;
     },
   },
@@ -75,6 +81,32 @@ const store = configureStore({
   reducer: { item: itemSlice.reducer, cart: cartSlice.reducer },
 });
 
+export const fetchCartData = () => {
+  return async (dispatch) => {
+    const getData = async () => {
+      const response = await fetch(
+        "https://redux-cart-d8b97-default-rtdb.firebaseio.com/cart.json"
+      );
+
+      if (!response.ok) {
+        throw new Error("failed to get Data !");
+      }
+
+      const data = await response.json();
+
+      return data;
+    };
+
+    try {
+      const cartData = await getData();
+      console.log(cartData);
+      dispatch(itemSlice.actions.replaceCart( cartData || []));
+    } catch (Error) {
+      console.log(Error);
+    }
+  };
+};
+
 export const sendCartData = (cart) => {
   return async (dispatch) => {
     const sendRequest = async () => {
@@ -91,12 +123,11 @@ export const sendCartData = (cart) => {
       }
     };
 
-   await sendRequest().catch((e) => console.log(e));
+    await sendRequest().catch((e) => console.log(e));
   };
 };
 
 export const itemActions = itemSlice.actions;
 export const cartActions = cartSlice.actions;
-
 
 export default store;
